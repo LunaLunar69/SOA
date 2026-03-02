@@ -2,9 +2,9 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from scipy.signal import correlate, convolve
+from scipy.signal import correlate, convolve 
 from numba import njit
-from params import SOAparams
+from params_predict import SOAparams_predict
 from cw_laser import cw_laser
 
 @njit
@@ -44,9 +44,9 @@ def raised_cosine_design(beta, span, spb):
             h[i] = np.sinc(t_norm) * np.cos(np.pi * beta * t_norm) / (1.0 - (2.0 * beta * t_norm)**2)
     return h / np.sqrt(np.sum(h**2))
 
-def run_simulation():
+def run_simulation_predict():
     t_start = time.time()
-    p = SOAparams()
+    p = SOAparams_predict()
     np.random.seed(4) 
     
     # 1. Secuencia de bits y PAM-4 Gray
@@ -157,7 +157,7 @@ def run_simulation():
     
     return I_trim, P_out_trim, P_levels, Th, off_best
 
-def plot_results(I_trim, P_out_trim, P_levels, thresholds, sample_period):
+def plot_results_predict(I_trim, P_out_trim, P_levels, thresholds, sample_period):
     t_trim = np.arange(len(I_trim)) * sample_period
     plt.figure(figsize=(10, 8))
     plt.subplot(2,1,1); plt.plot(t_trim, I_trim); plt.ylabel('I [A]'); plt.grid(True)
@@ -171,18 +171,18 @@ def plot_results(I_trim, P_out_trim, P_levels, thresholds, sample_period):
         plt.axvline(val, color=['r','c','b'][i], linestyle='--', label=f'Th{i+1}')
     plt.title('Histogramas en Instante Óptimo de Decisión'); plt.legend(); plt.grid(True)
  
-def plot_eye_diagrams(signals_list, UI, off_best):
+def plot_eye_diagrams_predict(signals_list, UI, off_best):
     n_signals = len(signals_list)
     fig = plt.figure(figsize=(12, 4 * n_signals), facecolor='black')
     gs = gridspec.GridSpec(n_signals, 2, width_ratios=[4, 1], wspace=0.02, hspace=0.4)
     
     x_dec = (off_best - (UI // 2)) / UI
      
-    for i, (sig, lbl, unit) in enumerate(signals_list): 
+    for i, (sig, lbl, unit) in enumerate(signals_list):
         ax_eye = plt.subplot(gs[i, 0])
         ax_hist = plt.subplot(gs[i, 1], sharey=ax_eye)
         
-        plot_single_eye_with_hist(ax_eye, ax_hist, sig, UI, f'Eye Diagram - {lbl}', lbl, unit, UI//2)
+        plot_single_eye_with_hist_predict(ax_eye, ax_hist, sig, UI, f'Eye Diagram - {lbl}', lbl, unit, UI//2)
         
         # Línea de decisión
         ax_eye.axvline(x_dec, color='r', linestyle='--', linewidth=1.5, label='Decision Line')        
@@ -191,7 +191,7 @@ def plot_eye_diagrams(signals_list, UI, off_best):
     gs.tight_layout(fig, rect=[0, 0, 1, 0.97]) 
     plt.show()
 
-def plot_single_eye_with_hist(ax_eye, ax_hist, signal, UI, title, ylabel, unit_scale, offset_samples):
+def plot_single_eye_with_hist_predict(ax_eye, ax_hist, signal, UI, title, ylabel, unit_scale, offset_samples):
     span_ui = 4
     samples_span = int(span_ui * UI) # Asegurar que sea entero
     
@@ -217,7 +217,7 @@ def plot_single_eye_with_hist(ax_eye, ax_hist, signal, UI, title, ylabel, unit_s
     ax_eye.set_facecolor('black')
     ax_eye.set_title(title, color='white')
     ax_eye.set_ylabel(ylabel, color='white')
-    ax_eye.tick_params(colors='white')
+    ax_eye.tick_params(colors='white') 
     ax_eye.grid(True, color='gray', alpha=0.3)
     
     # Histograma
@@ -226,8 +226,8 @@ def plot_single_eye_with_hist(ax_eye, ax_hist, signal, UI, title, ylabel, unit_s
     ax_hist.axis('off')
 
 if __name__ == "__main__":
-    p = SOAparams()
-    I_t, P_t, P_l, Th, off = run_simulation()
-    plot_results(I_t, P_t, P_l, Th, p.sample_period)
-    plot_eye_diagrams(I_t, P_t, p.samples_per_bit, off)
+    p = SOAparams_predict()
+    I_t, P_t, P_l, Th, off = run_simulation_predict()
+    plot_results_predict(I_t, P_t, P_l, Th, p.sample_period)
+    plot_eye_diagrams_predict(I_t, P_t, p.samples_per_bit, off)
     plt.show()
