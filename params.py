@@ -14,19 +14,19 @@ class SOAparams:
         self.Aeff = (self.width * self.depth) / self.Gamma
 
         # Material Parameters
-        self.N0 = 0.46E24
+        self.N0 = 0.46E24 
         self.loss = 1000.0
         self.DiffGain = 5.3E-20
         self.A = 6.0E8
-        self.B = 18.0E-16
+        self.B = 18.0E-16  
         self.C = 1.0E-40
         self.LEF = 3.0 
         self.lambda_val = 1550E-9
 
-        # Signal Parameters (Actualizados según MATLAB reciente)
+        # Signal Parameters 
         self.Numsymrrc = 8
-        self.bit_rate = 5.35e9          # Tasa de bits reducida
-        self.n_bits = 2**14             # Mayor estadística
+        self.bit_rate = 5.35e9          
+        self.n_bits = 2**14            
         self.samples_per_bit = 32
         
         # Cálculos derivados de la señal

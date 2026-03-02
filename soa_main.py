@@ -9,7 +9,6 @@ from cw_laser import cw_laser
 
 @njit
 def SOA_N_RK4_uniform(TimeVec, I, Pseg, Ninit, dt, q, Ener, Vol_seg, Vol_total, Gamma, N0, DiffGain, A, B, C, segment_length):
-    """Integra N(t) para UN segmento usando RK4 explícito en malla uniforme."""
     Nt = len(TimeVec)
     N = np.zeros(Nt)
     N[0] = Ninit
@@ -33,7 +32,6 @@ def SOA_N_RK4_uniform(TimeVec, I, Pseg, Ninit, dt, q, Ener, Vol_seg, Vol_total, 
     return N
 
 def raised_cosine_design(beta, span, spb):
-    """Equivalente a rcosdesign(beta, span, spb, 'normal') de MATLAB."""
     n = np.arange(-span * spb / 2, span * spb / 2 + 1)
     h = np.zeros_like(n, dtype=float)
     for i, t in enumerate(n):
@@ -49,7 +47,7 @@ def raised_cosine_design(beta, span, spb):
 def run_simulation():
     t_start = time.time()
     p = SOAparams()
-    np.random.seed(4) # Actualizado a rng(4)
+    np.random.seed(4) 
     
     # 1. Secuencia de bits y PAM-4 Gray
     bits = np.random.randint(0, 2, p.n_bits)
@@ -62,7 +60,7 @@ def run_simulation():
     sym[(b2==1) & (b1==1)] = 2
     sym[(b2==1) & (b1==0)] = 3
     
-    # --- NUEVO: Generación de pulsos Raised Cosine ---
+    # Generación de pulsos Raised Cosine
     elec_imp = np.zeros(p.n_samples)
     elec_imp[UI // 2::UI] = sym # Impulso en el centro del UI
     h_rc = raised_cosine_design(beta=0.3, span=8, spb=UI)
@@ -116,7 +114,7 @@ def run_simulation():
     I_trim, P_out_trim = I_current[idx_I[idx_trim]], p_out[idx_P[idx_trim]]
     orig_idx_surv = idx_I[idx_trim]
 
-    # --- NUEVO: Barrido de Offset (Métrica Q óptima) ---
+    # Barrido de Offset (Métrica Q óptima)
     best_metric, off_best = -np.inf, 0
     for off in range(UI):
         samp_orig = np.arange(n_syms) * UI + off
@@ -172,18 +170,26 @@ def plot_results(I_trim, P_out_trim, P_levels, thresholds, sample_period):
     for i, val in enumerate(thresholds):
         plt.axvline(val, color=['r','c','b'][i], linestyle='--', label=f'Th{i+1}')
     plt.title('Histogramas en Instante Óptimo de Decisión'); plt.legend(); plt.grid(True)
-
-def plot_eye_diagrams(I_trim, P_out_trim, UI, off_best):
-    fig = plt.figure(figsize=(12, 10), facecolor='black')
-    gs = gridspec.GridSpec(2, 2, width_ratios=[4, 1], wspace=0.05, hspace=0.3)
+ 
+def plot_eye_diagrams(signals_list, UI, off_best):
+    n_signals = len(signals_list)
+    fig = plt.figure(figsize=(12, 5 * n_signals), facecolor='black')
+    gs = gridspec.GridSpec(n_signals, 2, width_ratios=[4, 1], wspace=0.05, hspace=0.3)
     
-    # Marcamos la línea de decisión en el ojo basada en el off_best
+    # Línea de decisión vertical
     x_dec = (off_best - (UI // 2)) / UI
     
-    for i, (sig, lbl, unit) in enumerate([(I_trim, 'I [A]', 1.0), (P_out_trim, '$P_{out}$ [mW]', 1e3)]):
-        ax_eye = plt.subplot(gs[i, 0]); ax_hist = plt.subplot(gs[i, 1], sharey=ax_eye)
+    for i, (sig, lbl, unit) in enumerate(signals_list):
+        ax_eye = plt.subplot(gs[i, 0])
+        ax_hist = plt.subplot(gs[i, 1], sharey=ax_eye)
+        
         plot_single_eye_with_hist(ax_eye, ax_hist, sig, UI, f'Eye Diagram - {lbl}', lbl, unit, UI//2)
-        ax_eye.axvline(x_dec, color='r', linestyle='--', linewidth=1.5) # Línea de decisión
+        
+        # Línea de decisión
+        ax_eye.axvline(x_dec, color='r', linestyle='--', linewidth=1.5, label='Decision Line')
+        
+    plt.tight_layout()
+    plt.show()
 
 def plot_single_eye_with_hist(ax_eye, ax_hist, signal, UI, title, ylabel, unit_scale, offset_samples):
     span_ui = 4; samples_span = span_ui * UI
@@ -201,4 +207,4 @@ if __name__ == "__main__":
     I_t, P_t, P_l, Th, off = run_simulation()
     plot_results(I_t, P_t, P_l, Th, p.sample_period)
     plot_eye_diagrams(I_t, P_t, p.samples_per_bit, off)
-    plt.show()
+    plt.show() 
