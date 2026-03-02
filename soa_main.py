@@ -173,12 +173,11 @@ def plot_results(I_trim, P_out_trim, P_levels, thresholds, sample_period):
  
 def plot_eye_diagrams(signals_list, UI, off_best):
     n_signals = len(signals_list)
-    fig = plt.figure(figsize=(12, 5 * n_signals), facecolor='black')
-    gs = gridspec.GridSpec(n_signals, 2, width_ratios=[4, 1], wspace=0.05, hspace=0.3)
+    fig = plt.figure(figsize=(12, 4 * n_signals), facecolor='black')
+    gs = gridspec.GridSpec(n_signals, 2, width_ratios=[4, 1], wspace=0.02, hspace=0.4)
     
-    # Línea de decisión vertical
     x_dec = (off_best - (UI // 2)) / UI
-    
+     
     for i, (sig, lbl, unit) in enumerate(signals_list):
         ax_eye = plt.subplot(gs[i, 0])
         ax_hist = plt.subplot(gs[i, 1], sharey=ax_eye)
@@ -186,25 +185,49 @@ def plot_eye_diagrams(signals_list, UI, off_best):
         plot_single_eye_with_hist(ax_eye, ax_hist, sig, UI, f'Eye Diagram - {lbl}', lbl, unit, UI//2)
         
         # Línea de decisión
-        ax_eye.axvline(x_dec, color='r', linestyle='--', linewidth=1.5, label='Decision Line')
-        
-    plt.tight_layout()
+        ax_eye.axvline(x_dec, color='r', linestyle='--', linewidth=1.5, label='Decision Line')        
+        ax_hist.tick_params(labelleft=False, left=False)
+
+    gs.tight_layout(fig, rect=[0, 0, 1, 0.97]) 
     plt.show()
 
 def plot_single_eye_with_hist(ax_eye, ax_hist, signal, UI, title, ylabel, unit_scale, offset_samples):
-    span_ui = 4; samples_span = span_ui * UI
-    sig_s = signal[offset_samples:]
+    span_ui = 4
+    samples_span = int(span_ui * UI) # Asegurar que sea entero
+    
+    # Recorte inicial 
+    sig_s = signal[int(offset_samples):]
+    
     n_traces = len(sig_s) // samples_span
-    eye_m = (sig_s[:n_traces * samples_span] * unit_scale).reshape((n_traces, samples_span))
+    
+    if n_traces < 1:
+        print(f"Advertencia: No hay suficientes datos para graficar el ojo de {title}")
+        return
+
+    # Ajustar el signal para que sea múltiplo exacto de samples_span antes del reshape
+    sig_to_reshape = sig_s[:n_traces * samples_span]
+    eye_m = (sig_to_reshape * unit_scale).reshape((n_traces, samples_span))
+    
     t_span = np.linspace(-span_ui/2, span_ui/2, samples_span)
-    ax_eye.plot(t_eye := t_span, eye_m.T, color='#FFFF00', alpha=0.3, linewidth=0.5)
-    ax_eye.set_facecolor('black'); ax_eye.set_title(title, color='white'); ax_eye.grid(True, color='gray', alpha=0.5)
+    
+    # Graficar trazas
+    ax_eye.plot(t_span, eye_m.T, color='#FFFF00', alpha=0.3, linewidth=0.5)
+    
+    # Estética
+    ax_eye.set_facecolor('black')
+    ax_eye.set_title(title, color='white')
+    ax_eye.set_ylabel(ylabel, color='white')
+    ax_eye.tick_params(colors='white')
+    ax_eye.grid(True, color='gray', alpha=0.3)
+    
+    # Histograma
     ax_hist.hist(eye_m[:, samples_span // 2], bins=100, color='#FFFF00', alpha=0.6, orientation='horizontal')
-    ax_hist.set_facecolor('black'); ax_hist.axis('off')
+    ax_hist.set_facecolor('black')
+    ax_hist.axis('off')
 
 if __name__ == "__main__":
     p = SOAparams()
     I_t, P_t, P_l, Th, off = run_simulation()
     plot_results(I_t, P_t, P_l, Th, p.sample_period)
     plot_eye_diagrams(I_t, P_t, p.samples_per_bit, off)
-    plt.show() 
+    plt.show()
