@@ -33,3 +33,8 @@ class SOAparams:
         self.n_samples = int((self.n_bits / 2) * self.samples_per_bit)
         self.fs = self.samples_per_bit * self.bit_rate
         self.sample_period = 1.0 / self.fs
+
+        # Nuevos parámetros dinámicos para la generacion de dataset
+        self.beta_rc = 0.5
+        self.rango_corriente = 0.4
+        self.semilla = 42

@@ -1,2 +1,8 @@
 # Ignorar la carpeta __pycache__
 __pycache__
+
+# Ignorar csvs generados
+*.csv
+
+# Ignorar carpetas de resultados
+datasets_results/
