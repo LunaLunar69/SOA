@@ -46,8 +46,9 @@ def raised_cosine_design(beta, span, spb):
 
 def run_simulation(p):
     t_start = time.time()
-    p = SOAparams()
-    np.random.seed(4) 
+    
+    semilla = getattr(p, 'semilla', 4)
+    np.random.seed(semilla) 
     
     # Secuencia de bits y PAM-4 Gray
     bits = np.random.randint(0, 2, p.n_bits)
@@ -64,16 +65,16 @@ def run_simulation(p):
     elec_imp = np.zeros(p.n_samples)
     elec_imp[UI // 2::UI] = sym 
     
-    # 2. Inyección del Filtro Beta Dinámico
+    # 2. Filtro dinámico (si no viene, usa 0.3)
     beta_rc = getattr(p, 'beta_rc', 0.3)
     h_rc = raised_cosine_design(beta=beta_rc, span=8, spb=UI)
     filtered_signal = convolve(elec_imp, h_rc, mode='same')[:p.n_samples]
     
     time_vec = np.arange(p.n_samples) * p.sample_period
     
-    # 3. Inyección del Rango de Corriente Dinámico
+    # 3. Corriente dinámica (si no viene, usa 0.4)
     rango = getattr(p, 'rango_corriente', 0.4)
-    Ibias = 0.45 
+    Ibias = 0.45
     Imin = Ibias - (rango / 2.0)
     Imax = Ibias + (rango / 2.0)
     
@@ -121,7 +122,7 @@ def run_simulation(p):
     I_trim, P_out_trim = I_current[idx_I[idx_trim]], p_out[idx_P[idx_trim]]
     orig_idx_surv = idx_I[idx_trim]
 
-    # Barrido de Offset (Métrica Q óptima)
+    # Barrido de Offset 
     best_metric, off_best = -np.inf, 0
     for off in range(UI):
         samp_orig = np.arange(n_syms) * UI + off
@@ -137,15 +138,15 @@ def run_simulation(p):
         qs = [(mu_off[i+1]-mu_off[i])/(sg_off[i]+sg_off[i+1]) for i in range(3)]
         if min(qs) > best_metric: best_metric, off_best = min(qs), off
 
-    # 5. BER, SER y Umbrales con off_best
+    # BER, SER y Umbrales
     samp_final = np.arange(n_syms) * UI + off_best
     mask_f = np.isin(samp_final, orig_idx_surv)
     P_samp = P_out_trim[np.searchsorted(orig_idx_surv, samp_final[mask_f])] * 1e3
     sym_tx = sym[mask_f]
     
     P_levels = [P_samp[sym_tx == i] for i in range(4)]
-    mu = np.array([np.mean(p) for p in P_levels])
-    sg = np.array([np.std(p) for p in P_levels])
+    mu = np.array([np.mean(lvl) for lvl in P_levels])
+    sg = np.array([np.std(lvl) for lvl in P_levels])
     
     order_est = np.argsort(mu)
     mu_s, sg_s = mu[order_est], sg[order_est]
@@ -191,7 +192,6 @@ def plot_eye_diagrams(signals_list, UI, off_best):
         
         plot_single_eye_with_hist(ax_eye, ax_hist, sig, UI, f'Eye Diagram - {lbl}', lbl, unit, UI//2)
         
-        # Línea de decisión
         ax_eye.axvline(x_dec, color='r', linestyle='--', linewidth=1.5, label='Decision Line')        
         ax_hist.tick_params(labelleft=False, left=False)
 
@@ -200,43 +200,37 @@ def plot_eye_diagrams(signals_list, UI, off_best):
 
 def plot_single_eye_with_hist(ax_eye, ax_hist, signal, UI, title, ylabel, unit_scale, offset_samples):
     span_ui = 4
-    samples_span = int(span_ui * UI) # Asegurar que sea entero
+    samples_span = int(span_ui * UI)
     
-    # Recorte inicial 
     sig_s = signal[int(offset_samples):]
-    
     n_traces = len(sig_s) // samples_span
     
     if n_traces < 1:
         print(f"Advertencia: No hay suficientes datos para graficar el ojo de {title}")
         return
 
-    # Ajustar el signal para que sea múltiplo exacto de samples_span antes del reshape
     sig_to_reshape = sig_s[:n_traces * samples_span]
     eye_m = (sig_to_reshape * unit_scale).reshape((n_traces, samples_span))
     
     t_span = np.linspace(-span_ui/2, span_ui/2, samples_span)
     
-    # Graficar trazas
     ax_eye.plot(t_span, eye_m.T, color='#FFFF00', alpha=0.3, linewidth=0.5)
     
-    # Estética
     ax_eye.set_facecolor('black')
     ax_eye.set_title(title, color='white')
     ax_eye.set_ylabel(ylabel, color='white')
     ax_eye.tick_params(colors='white')
     ax_eye.grid(True, color='gray', alpha=0.3)
     
-    # Histograma
     ax_hist.hist(eye_m[:, samples_span // 2], bins=100, color='#FFFF00', alpha=0.6, orientation='horizontal')
     ax_hist.set_facecolor('black')
     ax_hist.axis('off')
 
 if __name__ == "__main__":
     p = SOAparams()
-    # Le pasamos "p" a la simulación
-    I_t, P_t, P_l, Th, off = run_simulation(p)
     
+    # Se inyecta p a la simulación
+    I_t, P_t, P_l, Th, off = run_simulation(p)
     plot_results(I_t, P_t, P_l, Th, p.sample_period)
     
     # Se le pasa la lista de tuplas con las señales como lo pide tu función
@@ -245,4 +239,5 @@ if __name__ == "__main__":
         (P_t, 'Output Power (P_out)', 1e3)
     ]
     plot_eye_diagrams(signals_para_ojo, p.samples_per_bit, off)
+    
     plt.show()
