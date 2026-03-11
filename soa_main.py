@@ -46,12 +46,14 @@ def raised_cosine_design(beta, span, spb):
             h[i] = np.sinc(t_norm) * np.cos(np.pi * beta * t_norm) / (1.0 - (2.0 * beta * t_norm)**2)
     return h / np.sqrt(np.sum(h**2))
 
-def run_simulation():
+def run_simulation(p):
     t_start = time.time()
-    p = SOAparams()
-    np.random.seed(4) # Actualizado a rng(4)
     
-    # 1. Secuencia de bits y PAM-4 Gray
+    # 1. Inyección de la Semilla Dinámica
+    semilla = getattr(p, 'semilla', 4)
+    np.random.seed(semilla) 
+    
+    # Secuencia de bits y PAM-4 Gray
     bits = np.random.randint(0, 2, p.n_bits)
     UI = p.samples_per_bit
     n_syms = len(bits) // 2
@@ -64,14 +66,21 @@ def run_simulation():
     
     # --- NUEVO: Generación de pulsos Raised Cosine ---
     elec_imp = np.zeros(p.n_samples)
-    elec_imp[UI // 2::UI] = sym # Impulso en el centro del UI
-    h_rc = raised_cosine_design(beta=0.3, span=8, spb=UI)
+    elec_imp[UI // 2::UI] = sym 
+    
+    # 2. Inyección del Filtro Beta Dinámico
+    beta_rc = getattr(p, 'beta_rc', 0.3)
+    h_rc = raised_cosine_design(beta=beta_rc, span=8, spb=UI)
     filtered_signal = convolve(elec_imp, h_rc, mode='same')[:p.n_samples]
     
     time_vec = np.arange(p.n_samples) * p.sample_period
     
-    # Ajuste de corriente
-    Imin, Imax = 0.250, 0.650
+    # 3. Inyección del Rango de Corriente Dinámico
+    rango = getattr(p, 'rango_corriente', 0.4)
+    Ibias = 0.45 
+    Imin = Ibias - (rango / 2.0)
+    Imax = Ibias + (rango / 2.0)
+    
     gd_rc = (8 * UI) // 2
     x_ss = filtered_signal[gd_rc:-gd_rc]
     x_lo, x_hi = np.percentile(x_ss, 0.1), np.percentile(x_ss, 99.9)
@@ -79,10 +88,10 @@ def run_simulation():
     c = Imin - m * x_lo
     I_current = c + m * filtered_signal
     
-    # 2. CW Laser de entrada
+    # CW Laser de entrada
     e_in = cw_laser(p.n_samples, p.sample_period)
     
-    # 3. Solución Segmentada
+    # Solución Segmentada
     num_segments = 10
     segment_length = p.L / num_segments
     Vol_seg = p.width * p.depth * segment_length
@@ -101,7 +110,7 @@ def run_simulation():
         
     p_out = p_seg_in
     
-    # 4. Alineación y Recorte
+    # Alineación y Recorte
     n_skip_sym = 2
     start0 = n_skip_sym * UI
     corr = correlate(p_out[start0:] - np.mean(p_out[start0:]), I_current[start0:] - np.mean(I_current[start0:]))
@@ -198,7 +207,15 @@ def plot_single_eye_with_hist(ax_eye, ax_hist, signal, UI, title, ylabel, unit_s
 
 if __name__ == "__main__":
     p = SOAparams()
-    I_t, P_t, P_l, Th, off = run_simulation()
+    # Le pasamos "p" a la simulación
+    I_t, P_t, P_l, Th, off = run_simulation(p)
+    
     plot_results(I_t, P_t, P_l, Th, p.sample_period)
-    plot_eye_diagrams(I_t, P_t, p.samples_per_bit, off)
+    
+    # Se le pasa la lista de tuplas con las señales como lo pide tu función
+    signals_para_ojo = [
+        (I_t, 'Driving Current (I)', 1.0),
+        (P_t, 'Output Power (P_out)', 1e3)
+    ]
+    plot_eye_diagrams(signals_para_ojo, p.samples_per_bit, off)
     plt.show()
