@@ -8,7 +8,7 @@ DATA_DIR = 'datasets' # Ruta donde esté la carpeta con los datasets
 TEACHER_PATH = 'teacher_soa_resnet.keras'
 WINDOW_SIZE = 64
 BATCH_SIZE = 512
-EPOCHS = 30 
+EPOCHS = 60 # AUMENTADO: Más tiempo de estudio para alcanzar los picos
 STEPS_PER_EPOCH = 4000 
 
 # --- 2. CARGA DE DATOS ---
@@ -101,7 +101,8 @@ def train_step(x, y_true):
         s_feat_pooled = tf.reduce_mean(s_cnn, axis=[1, 2])
         loss_feat = mse(t_feat_pooled, s_feat_pooled)
         
-        total_loss = (0.5 * loss_label) + (0.3 * loss_kd) + (0.2 * loss_feat)
+        # ACTUALIZADO: Forzamos al modelo a respetar más la amplitud real (0.7)
+        total_loss = (0.7 * loss_label) + (0.2 * loss_kd) + (0.1 * loss_feat)
         
     gradients = tape.gradient(total_loss, student.trainable_variables)
     optimizer.apply_gradients(zip(gradients, student.trainable_variables))

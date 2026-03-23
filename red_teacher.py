@@ -96,3 +96,4 @@ history = teacher.fit(
 
 # --- 6. EXPORTACIÓN ---
 teacher.save('teacher_soa_resnet.keras')
+print("\n¡Entrenamiento del teacher completado y guardado!")

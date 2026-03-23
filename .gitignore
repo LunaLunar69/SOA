@@ -1,1 +1,16 @@
-__pycache__
+# --- Entornos y Ejecutables ---
+# Ignorar el instalador de Miniconda
+Miniconda3-*.sh
+
+# --- Python ---
+__pycache__/
+
+# --- Machine Learning / Datos ---
+# Ignorar modelos de Keras (suelen ser muy pesados)
+# *.keras
+
+# Ignorar el dataset, carpeta de datos crudos
+datasets/
+
+# --- Sistema ---
+.DS_Store               
