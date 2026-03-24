@@ -1,0 +1,16 @@
+{
+    "min": {
+        "Power_Output_mW": 0.01562191324760941,
+        "Bit_Rate": 1000000000.0,
+        "Beta_RC": 0.1,
+        "Rango_Corr": 0.2,
+        "Current_Input_A": 0.03934093556529358
+    },
+    "max": {
+        "Power_Output_mW": 278.1070067973401,
+        "Bit_Rate": 25000000000.0,
+        "Beta_RC": 1.0,
+        "Rango_Corr": 0.7,
+        "Current_Input_A": 0.8699541684983506
+    }
+}
