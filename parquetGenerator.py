@@ -56,6 +56,8 @@ def run_massive_generator():
             longitud_minima = min(len(I_trim), len(P_out_trim), len(sym2), len(P_out_trim2))
             
             df = pd.DataFrame({
+                'Current_Input_A': I_trim[:longitud_minima],
+
                 # Señales Nuevas de SOA5 Recortadas
                 'Input_Sym2': sym2[:longitud_minima],
                 'Output_P2': P_out_trim2[:longitud_minima] * 1e3,
