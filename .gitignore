@@ -1,1 +1,5 @@
 __pycache__
+
+HighQualityDataset_SOA5.parquet
+
+*.keras

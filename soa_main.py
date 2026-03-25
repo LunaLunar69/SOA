@@ -170,7 +170,8 @@ def run_simulation():
     BER = np.mean(sym2bits(sym_tx) != sym2bits(sym_hat))
     print(f"BER = {BER:.3e} | Offset Óptimo: {off_best}")
     
-    return I_trim, P_out_trim, P_levels, Th, off_best
+    # changed the return to include sym2 and P_out_trim2
+    return I_trim, P_out_trim, sym2, P_out_trim2
 
 def plot_results(I_trim, P_out_trim, P_levels, thresholds, sample_period):
     t_trim = np.arange(len(I_trim)) * sample_period
