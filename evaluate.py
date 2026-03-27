@@ -5,7 +5,7 @@ import json
 import glob
 import os
 from tensorflow.keras import layers
-from utils import SOADataLoader # O utils_data si así se llama tu archivo
+from utils_data import SOADataLoader # O utils_data si así se llama tu archivo
 
 # --- 1. CONFIGURACIÓN ---
 DATA_DIR = 'datasets' 
