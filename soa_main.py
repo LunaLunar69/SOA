@@ -171,7 +171,7 @@ def run_simulation():
     print(f"BER = {BER:.3e} | Offset Óptimo: {off_best}")
     
     # changed the return to include sym2 and P_out_trim2
-    return I_trim, P_out_trim, sym2, P_out_trim2
+    return I_trim, P_out_trim, sym2, P_out_trim2, time_vec2
 
 def plot_results(I_trim, P_out_trim, P_levels, thresholds, sample_period):
     t_trim = np.arange(len(I_trim)) * sample_period
