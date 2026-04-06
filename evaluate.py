@@ -13,7 +13,7 @@ STUDENT_PATH = 'student_soa_best.keras' # Usamos el que se guardó con el Early 
 SCALERS_PATH = 'scalers.json'
 WINDOW_SIZE = 128 # Sincronizado con el entrenamiento
 NUM_SAMPLES_TO_TEST = 1000 # Muestras a graficar
-TARGET = ['Current_Input_A']
+TARGET = ['Input_Sym2']
 
 # --- 2. CAPA PERSONALIZADA (Obligatoria para que Keras entienda el modelo) ---
 @tf.keras.utils.register_keras_serializable()
