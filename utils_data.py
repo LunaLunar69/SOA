@@ -7,7 +7,7 @@ import glob
 import json
 from numpy.lib.stride_tricks import sliding_window_view
 
-FEATURES = ['Output_P2', 'Bit_Rate', 'Beta_RC', 'Rango_Corr']
+FEATURES = ['Time', 'Output_P2', 'Bit_Rate', 'Beta_RC', 'Rango_Corr']
 TARGET = ['Input_Sym2']
 ALL_COLUMNS = FEATURES + TARGET
 
