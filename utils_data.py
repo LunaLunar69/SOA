@@ -7,11 +7,13 @@ import glob
 import json
 from numpy.lib.stride_tricks import sliding_window_view
 
+# ¡Excelente! Sin la columna Time
 FEATURES = ['Output_P2', 'Bit_Rate', 'Beta_RC', 'Rango_Corr']
 TARGET = ['I_trim']
 ALL_COLUMNS = FEATURES + TARGET
 
-def calculate_global_scalers(file_list, chunksize=1000000, save_path='scalers.json'):
+# CAMBIO CLAVE: Renombramos el archivo de scalers para evitar usar el viejo
+def calculate_global_scalers(file_list, chunksize=1000000, save_path='scalers_soa5.json'):
     print(f"Buscando y calculando scalers sobre {len(file_list)} archivos...")
     
     if not file_list:
@@ -39,7 +41,8 @@ def calculate_global_scalers(file_list, chunksize=1000000, save_path='scalers.js
     return scalers
 
 class SOADataLoader:
-    def __init__(self, file_list, window_size, batch_size=512, scalers_path='scalers.json'):
+    # CAMBIO CLAVE: Actualizamos el argumento por defecto
+    def __init__(self, file_list, window_size, batch_size=512, scalers_path='scalers_soa5.json'):
         self.file_list = file_list 
         self.window_size = window_size
         self.batch_size = batch_size

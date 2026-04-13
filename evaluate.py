@@ -9,11 +9,11 @@ from utils_data import SOADataLoader # O utils_data si así se llama tu archivo
 
 # --- 1. CONFIGURACIÓN ---
 DATA_DIR = 'datasets' 
-STUDENT_PATH = 'student_soa_best.keras' # Usamos el que se guardó con el Early Stopping
-SCALERS_PATH = 'scalers.json'
+STUDENT_PATH = 'student_soa5_best.keras' # Usamos el que se guardó con el Early Stopping
+SCALERS_PATH = 'scalers_soa5.json'
 WINDOW_SIZE = 128 # Sincronizado con el entrenamiento
 NUM_SAMPLES_TO_TEST = 1000 # Muestras a graficar
-TARGET = ['Input_Sym2']
+TARGET = ['I_trim']
 
 # --- 2. CAPA PERSONALIZADA (Obligatoria para que Keras entienda el modelo) ---
 @tf.keras.utils.register_keras_serializable()

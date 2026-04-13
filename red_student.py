@@ -7,13 +7,20 @@ from sklearn.model_selection import train_test_split
 from utils_data  import SOADataLoader 
 
 # --- 1. CONFIGURACIÓN ---
+# CAMBIO: Apuntando a la nueva data y al nuevo maestro
 DATA_DIR = 'datasets' 
-TEACHER_PATH = 'teacher_soa_resnet.keras'
-WINDOW_SIZE = 128 # Sincronizado con el Teacher
+TEACHER_PATH = 'teacher_soa5_best.keras'
+WINDOW_SIZE = 128 
 BATCH_SIZE = 512
 EPOCHS = 60       
 STEPS_PER_EPOCH = 1000 
 VAL_STEPS = 200
+
+# Validaciones de seguridad
+if not os.path.exists(DATA_DIR):
+    raise FileNotFoundError(f"Falta la carpeta {DATA_DIR}. Corre primero el generador.")
+if not os.path.exists(TEACHER_PATH):
+    raise FileNotFoundError(f"Falta el modelo {TEACHER_PATH}. Entrena primero al Teacher.")
 
 # --- 2. DIVISIÓN DE DATOS (TRAIN / VAL) ---
 all_parquet_files = glob.glob(os.path.join(DATA_DIR, '*.parquet'))
@@ -28,7 +35,7 @@ train_ds = train_loader.get_tf_dataset()
 val_ds = val_loader.get_tf_dataset()
 NUM_FEATURES = train_loader.num_features
 
-# --- 3. COMPONENTE PERSONALIZADO (El mismo del Teacher) ---
+# --- 3. COMPONENTE PERSONALIZADO ---
 @tf.keras.utils.register_keras_serializable()
 class SimpleAttention(layers.Layer):
     def __init__(self, units, **kwargs):
@@ -43,7 +50,6 @@ class SimpleAttention(layers.Layer):
     def call(self, inputs):
         score = self.V(self.W(inputs))
         attention_weights = tf.nn.softmax(score, axis=1)
-        # Suma temporal para comprimir la secuencia
         context_vector = tf.reduce_sum(attention_weights * inputs, axis=1)
         return context_vector
 
@@ -77,20 +83,18 @@ def build_student_model(window_size, num_features):
     
     # CNN ligera
     s_cnn = layers.Conv1D(16, kernel_size=3, padding='same', activation='relu')(inputs)
-    # Reducimos la secuencia a la mitad para ahorrar muchísima memoria en la GRU
     s_pool = layers.MaxPooling1D(pool_size=2)(s_cnn)
     
-    # GRU ligera (solo 32 unidades)
+    # GRU ligera
     s_gru = layers.GRU(32, return_sequences=True)(s_pool)
     
     # Atención miniatura
     s_att = SimpleAttention(32)(s_gru)
     
-    # Capas densas de salida
+    # Capas densas
     dense = layers.Dense(16, activation='relu')(s_att)
     outputs = layers.Dense(1, activation='linear')(dense)
     
-    # El modelo devuelve la Conv1D (para KD de características) y la predicción final
     return models.Model(inputs=inputs, outputs=[s_cnn, outputs], name="Student_SOA")
 
 student = build_student_model(WINDOW_SIZE, NUM_FEATURES)
@@ -102,28 +106,20 @@ mse = tf.keras.losses.MeanSquaredError()
 
 @tf.function
 def train_step(x, y_true):
-    # El maestro da sus respuestas (no aprende, solo evalúa)
     t_cnn, t_logits = teacher_mlkd(x, training=False)
     
     with tf.GradientTape() as tape:
-        # El aprendiz da sus respuestas
         s_cnn, s_logits = student(x, training=True)
         
-        # 1. Pérdida Label: ¿Qué tan lejos está de los datos reales?
         loss_label = mse(y_true, s_logits)
-        
-        # 2. Pérdida KD: ¿Qué tan lejos está de la respuesta del maestro?
         loss_kd = mse(t_logits, s_logits)
         
-        # 3. Pérdida de Características: ¿Extrae la información espacial igual que el maestro?
         t_feat_pooled = tf.reduce_mean(t_cnn, axis=[1, 2])
         s_feat_pooled = tf.reduce_mean(s_cnn, axis=[1, 2])
         loss_feat = mse(t_feat_pooled, s_feat_pooled)
         
-        # Suma ponderada de las pérdidas
         total_loss = (0.4 * loss_label) + (0.4 * loss_kd) + (0.2 * loss_feat)
         
-    # Aplicar gradientes (aprender)
     gradients = tape.gradient(total_loss, student.trainable_variables)
     optimizer.apply_gradients(zip(gradients, student.trainable_variables))
     return total_loss, loss_label, loss_kd
@@ -142,7 +138,7 @@ def val_step(x, y_true):
 print("\nIniciando Destilación de Conocimiento (KD)...")
 
 best_val_loss = float('inf')
-patience = 10  # Épocas de tolerancia si no hay mejora
+patience = 10 
 wait = 0
 
 for epoch in range(EPOCHS):
@@ -165,15 +161,15 @@ for epoch in range(EPOCHS):
     val_loss_epoch = val_loss_epoch / VAL_STEPS
     print(f" -> val_loss general: {val_loss_epoch:.4f}")
     
-    # Lógica de Guardado y Early Stopping
+    # Lógica de Guardado
     if val_loss_epoch < best_val_loss:
         print(f"¡Mejora detectada! ({best_val_loss:.4f} -> {val_loss_epoch:.4f}). Guardando modelo...")
         best_val_loss = val_loss_epoch
         
-        # Guardamos un modelo limpio que solo necesita la entrada y escupe la predicción
         inference_student = models.Model(inputs=student.input, outputs=student.output[1])
-        inference_student.save('student_soa_best.keras')
-        wait = 0 # Reiniciamos la paciencia
+        # CAMBIO: Nuevo nombre para proteger el anterior
+        inference_student.save('student_soa5_best.keras')
+        wait = 0 
     else:
         wait += 1
         print(f"Sin mejora desde hace {wait} épocas.")

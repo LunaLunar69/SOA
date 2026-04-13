@@ -8,15 +8,18 @@ from sklearn.model_selection import train_test_split
 from utils_data import SOADataLoader 
 
 # --- 1. CONFIGURACIÓN ---
-DATA_DIR = 'datasets' # Ruta donde estan los 1500 datasets .parquet
+# CAMBIO: Apuntando a tu nueva carpeta de datos generada
+DATA_DIR = 'datasets' 
 WINDOW_SIZE = 128     
 BATCH_SIZE = 512  
 EPOCHS = 60
-STEPS_PER_EPOCH = 1000 # Reducido a 1000 para que valide más rápido
-VAL_STEPS = 200        # Pasos de validación por época
+STEPS_PER_EPOCH = 1000 
+VAL_STEPS = 200        
 
 # --- 2. DIVISIÓN DE DATOS (TRAIN / VAL) ---
-# Obtenemos todos los archivos y los separamos (80% train, 20% val)
+if not os.path.exists(DATA_DIR):
+    raise FileNotFoundError(f"¡Cuidado! No se encontró la carpeta {DATA_DIR}. Revisa que el generador haya terminado.")
+
 all_parquet_files = glob.glob(os.path.join(DATA_DIR, '*.parquet'))
 train_files, val_files = train_test_split(all_parquet_files, test_size=0.2, random_state=42)
 
@@ -24,7 +27,7 @@ print(f"Archivos totales: {len(all_parquet_files)}")
 print(f"Archivos de entrenamiento: {len(train_files)}")
 print(f"Archivos de validación: {len(val_files)}")
 
-# Inicializamos los dos loaders con sus respectivas listas de archivos
+# Inicializamos los dos loaders (Esto calculará el nuevo scalers_soa5.json la primera vez)
 train_loader = SOADataLoader(train_files, WINDOW_SIZE, BATCH_SIZE)
 val_loader = SOADataLoader(val_files, WINDOW_SIZE, BATCH_SIZE)
 
@@ -67,7 +70,7 @@ def build_teacher_model(window_size, num_features):
 
     # Bloque 2: BiGRU con Atención
     r = layers.Bidirectional(layers.GRU(64, return_sequences=True))(c)
-    a = SimpleAttention(128)(r) # La salida ya es plana (batch_size, features)
+    a = SimpleAttention(128)(r) 
     
     # Bloque 3: Refinamiento Residual
     dense_base = layers.Dense(128, activation='relu')(a)
@@ -92,7 +95,8 @@ teacher.summary()
 callbacks = [
     EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True),
     ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-6, verbose=1),
-    ModelCheckpoint('teacher_best_weights.keras', save_best_only=True, monitor='val_loss')
+    # CAMBIO: Renombrado para no sobreescribir el anterior
+    ModelCheckpoint('teacher_soa5_best.keras', save_best_only=True, monitor='val_loss') 
 ]
 
 print("\nIniciando entrenamiento con mezcla dinámica y validación cruzada...")
@@ -107,5 +111,6 @@ history = teacher.fit(
 )
 
 # --- 6. EXPORTACIÓN ---
-teacher.save('teacher_soa_resnet.keras')
+# CAMBIO: Renombrado
+teacher.save('teacher_soa5_final.keras')
 print("\n¡Entrenamiento del teacher completado y guardado!")
