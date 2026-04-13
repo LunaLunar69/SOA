@@ -51,16 +51,22 @@ def run_massive_generator():
         p.semilla = config['semilla']
 
         try:
-            I_trim, P_out_trim, sym2, P_out_trim2 = run_simulation()
+            # 1. Atrapamos TODAS las variables (ya no usamos el guion bajo para I_trim)
+            I_trim, P_out_trim, sym2, P_out_trim2, time_vec2 = run_simulation(p_custom=p)
             
-            longitud_minima = min(len(I_trim), len(P_out_trim), len(sym2), len(P_out_trim2))
+            # 2. Como P_out_trim2 tiene saltos de 16, le aplicamos el mismo salto a I_trim
+            # para que las columnas del DataFrame tengan exactamente el mismo tamaño
+            I_trim2 = I_trim[0::16]
+            
+            # 3. Calculamos la longitud mínima contemplando a I_trim2
+            longitud_minima = min(len(time_vec2), len(sym2), len(P_out_trim2), len(I_trim2))
             
             df = pd.DataFrame({
-                'Current_Input_A': I_trim[:longitud_minima],
-
                 # Señales Nuevas de SOA5 Recortadas
+                'Time': time_vec2[:longitud_minima],
                 'Input_Sym2': sym2[:longitud_minima],
-                'Output_P2': P_out_trim2[:longitud_minima] * 1e3,
+                'Output_P2': P_out_trim2[:longitud_minima],
+                'I_trim': I_trim2[:longitud_minima], # <--- ¡Aquí está tu columna nueva!
                 
                 # Constantes
                 'Bit_Rate': config['bit_rate'],

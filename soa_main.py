@@ -46,10 +46,22 @@ def raised_cosine_design(beta, span, spb):
             h[i] = np.sinc(t_norm) * np.cos(np.pi * beta * t_norm) / (1.0 - (2.0 * beta * t_norm)**2)
     return h / np.sqrt(np.sum(h**2))
 
-def run_simulation():
+def run_simulation(p_custom=None, seed_val=None):
     t_start = time.time()
-    p = SOAparams()
-    np.random.seed(4) # Actualizado a rng(4)
+    
+    # 1. Asignación dinámica de parámetros
+    if p_custom is not None:
+        p = p_custom
+    else:
+        p = SOAparams()
+        
+    # 2. Asignación dinámica de la semilla (para que cada iteración sea única)
+    if seed_val is not None:
+        np.random.seed(seed_val)
+    elif hasattr(p, 'semilla'):
+        np.random.seed(p.semilla)
+    else:
+        np.random.seed(4) # Valor por defecto
     
     # 1. Secuencia de bits y PAM-4 Gray
     bits = np.random.randint(0, 2, p.n_bits)
@@ -74,13 +86,20 @@ def run_simulation():
     # --- NUEVO: Generación de pulsos Raised Cosine ---
     elec_imp = np.zeros(p.n_samples)
     elec_imp[UI // 2::UI] = sym # Impulso en el centro del UI
-    h_rc = raised_cosine_design(beta=0.3, span=8, spb=UI)
+    
+    # 3. Asignación dinámica del Beta RC
+    beta_val = getattr(p, 'beta_rc', 0.3)
+    h_rc = raised_cosine_design(beta=beta_val, span=8, spb=UI)
     filtered_signal = convolve(elec_imp, h_rc, mode='same')[:p.n_samples]
     
     time_vec = np.arange(p.n_samples) * p.sample_period
     
-    # Ajuste de corriente
-    Imin, Imax = 0.250, 0.650
+    # 4. Asignación dinámica del Rango de Corriente
+    # Asumimos que el centro de operación es 0.450 A, y abrimos el rango según el swing
+    swing = getattr(p, 'rango_corriente', 0.40) # Por defecto: 0.650 - 0.250 = 0.40
+    Imin = 0.450 - (swing / 2.0)
+    Imax = 0.450 + (swing / 2.0)
+    
     gd_rc = (8 * UI) // 2
     x_ss = filtered_signal[gd_rc:-gd_rc]
     x_lo, x_hi = np.percentile(x_ss, 0.1), np.percentile(x_ss, 99.9)
@@ -101,7 +120,7 @@ def run_simulation():
     p_seg_in = np.abs(e_in)**2
     e_field = e_in.copy()
     
-    print("Simulando propagación en SOA...")
+    # print("Simulando propagación en SOA...") # Lo puedes comentar para no saturar tu terminal en el bucle
     for k in range(num_segments):
         N_seg = SOA_N_RK4_uniform(time_vec, I_current, p_seg_in, 0.4e24, p.sample_period, q, Ener, Vol_seg, p.Vol, p.Gamma, p.N0, p.DiffGain, p.A, p.B, p.C, segment_length)
         gan = p.Gamma * p.DiffGain * (N_seg - p.N0)
@@ -111,7 +130,7 @@ def run_simulation():
     p_out = p_seg_in
     
     # 4. Alineación y Recorte
-    n_skip_sym = 0 # MODIFICADO por PTF (antes era 2)
+    n_skip_sym = 0 
     start0 = n_skip_sym * UI
     corr = correlate(p_out[start0:] - np.mean(p_out[start0:]), I_current[start0:] - np.mean(I_current[start0:]))
     d_soa = np.argmax(corr) - (len(I_current[start0:]) - 1)
@@ -168,10 +187,10 @@ def run_simulation():
         return np.column_stack(((s_arr == 2) | (s_arr == 3), (s_arr == 1) | (s_arr == 2))).ravel()
         
     BER = np.mean(sym2bits(sym_tx) != sym2bits(sym_hat))
-    print(f"BER = {BER:.3e} | Offset Óptimo: {off_best}")
+    print(f"BER = {BER:.3e} | Offset Óptimo: {off_best}") # Lo puedes comentar para el bucle
     
-    # changed the return to include sym2 and P_out_trim2
-    return I_trim, P_out_trim, sym2, P_out_trim2
+    # Retornamos los datos para que tu script generador pueda desempaquetarlos sin error
+    return I_trim, P_out_trim, sym2, P_out_trim2, time_vec2
 
 def plot_results(I_trim, P_out_trim, P_levels, thresholds, sample_period):
     t_trim = np.arange(len(I_trim)) * sample_period
@@ -206,9 +225,27 @@ def plot_single_eye_with_hist(ax_eye, ax_hist, signal, UI, title, ylabel, unit_s
     eye_m = (sig_s[:n_traces * samples_span] * unit_scale).reshape((n_traces, samples_span))
     t_span = np.linspace(-span_ui/2, span_ui/2, samples_span)
     ax_eye.plot(t_eye := t_span, eye_m.T, color='#FFFF00', alpha=0.3, linewidth=0.5)
-    ax_eye.set_facecolor('black'); ax_eye.set_title(title, color='white'); ax_eye.grid(True, color='gray', alpha=0.5)
+    ax_eye.set_facecolor('black'); ax_eye.set_title(title, color='white'); ax_eye.grid(True, color='gray', alpha=0.5)   
     ax_hist.hist(eye_m[:, samples_span // 2], bins=100, color='#FFFF00', alpha=0.6, orientation='horizontal')
     ax_hist.set_facecolor('black'); ax_hist.axis('off')
+
+    # --- AQUÍ EMPIEZAN LOS CAMBIOS ---
+    ax_eye.set_facecolor('black'); ax_eye.set_title(title, color='white'); ax_eye.grid(True, color='gray', alpha=0.5)
+    
+    # Agrega estas tres líneas para los ejes X y Y del ojo:
+    ax_eye.set_ylabel(ylabel, color='white')
+    ax_eye.tick_params(axis='x', colors='white', labelcolor='white')
+    ax_eye.tick_params(axis='y', colors='white', labelcolor='white')
+    # ---------------------------------
+    
+    ax_hist.hist(eye_m[:, samples_span // 2], bins=100, color='#FFFF00', alpha=0.6, orientation='horizontal')
+    
+    # --- Y AQUÍ EL ÚLTIMO CAMBIO PARA EL HISTOGRAMA ---
+    # Cambia el ax_hist.axis('off') por esto para que se vean solo los números de abajo:
+    ax_hist.set_facecolor('black')
+    ax_hist.tick_params(axis='x', colors='white', labelcolor='white')
+    ax_hist.set_yticklabels([]) # Quita los números en Y para que no estorben
+    for spine in ax_hist.spines.values(): spine.set_visible(False)
 
 if __name__ == "__main__":
     p = SOAparams()
