@@ -3,12 +3,12 @@ import numpy as np
 import tensorflow as tf
 import pyarrow.parquet as pq
 import os
-import glob
+import glob 
 import json
 from numpy.lib.stride_tricks import sliding_window_view
 
-FEATURES = ['Time', 'Output_P2', 'Bit_Rate', 'Beta_RC', 'Rango_Corr']
-TARGET = ['Input_Sym2']
+FEATURES = ['Output_P2', 'Bit_Rate', 'Beta_RC', 'Rango_Corr']
+TARGET = ['I_trim']
 ALL_COLUMNS = FEATURES + TARGET
 
 def calculate_global_scalers(file_list, chunksize=1000000, save_path='scalers.json'):
