@@ -64,6 +64,7 @@ def run_massive_generator():
             df = pd.DataFrame({
                 # Señales Nuevas de SOA5 Recortadas
                 'Time': time_vec2[:longitud_minima],
+                'Time': time_vec2[:longitud_minima],
                 'Input_Sym2': sym2[:longitud_minima],
                 'Output_P2': P_out_trim2[:longitud_minima],
                 'I_trim': I_trim2[:longitud_minima], # <--- ¡Aquí está tu columna nueva!
