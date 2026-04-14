@@ -7,16 +7,15 @@ import os
 from sklearn.model_selection import train_test_split
 from utils_data import SOADataLoader 
 
-# --- 1. CONFIGURACIÓN ---
-DATA_DIR = 'datasets' # Ruta donde estan los 1500 datasets .parquet
+# CONFIGURACIÓN
+DATA_DIR = 'datasets' 
 WINDOW_SIZE = 128     
 BATCH_SIZE = 512  
 EPOCHS = 60
-STEPS_PER_EPOCH = 1000 # Reducido a 1000 para que valide más rápido
-VAL_STEPS = 200        # Pasos de validación por época
+STEPS_PER_EPOCH = 1000 
+VAL_STEPS = 200    
 
-# --- 2. DIVISIÓN DE DATOS (TRAIN / VAL) ---
-# Obtenemos todos los archivos y los separamos (80% train, 20% val)
+# (TRAIN / VAL)
 all_parquet_files = glob.glob(os.path.join(DATA_DIR, '*.parquet'))
 train_files, val_files = train_test_split(all_parquet_files, test_size=0.2, random_state=42)
 
@@ -24,15 +23,12 @@ print(f"Archivos totales: {len(all_parquet_files)}")
 print(f"Archivos de entrenamiento: {len(train_files)}")
 print(f"Archivos de validación: {len(val_files)}")
 
-# Inicializamos los dos loaders con sus respectivas listas de archivos
 train_loader = SOADataLoader(train_files, WINDOW_SIZE, BATCH_SIZE)
 val_loader = SOADataLoader(val_files, WINDOW_SIZE, BATCH_SIZE)
 
 train_dataset = train_loader.get_tf_dataset()
 val_dataset = val_loader.get_tf_dataset()
 NUM_FEATURES = train_loader.num_features
-
-# --- 3. COMPONENTES PERSONALIZADOS ---
 @tf.keras.utils.register_keras_serializable()
 class SimpleAttention(layers.Layer):
     def __init__(self, units, **kwargs):
@@ -47,7 +43,6 @@ class SimpleAttention(layers.Layer):
     def call(self, inputs):
         score = self.V(self.W(inputs))
         attention_weights = tf.nn.softmax(score, axis=1)
-        # Aplicamos y comprimimos la secuencia sumando a lo largo del tiempo
         context_vector = tf.reduce_sum(attention_weights * inputs, axis=1)
         return context_vector
 
@@ -56,7 +51,7 @@ class SimpleAttention(layers.Layer):
         config.update({"units": self.units})
         return config
 
-# --- 4. ARQUITECTURA DEL MODELO TEACHER ---
+# ARQUITECTURA DEL MODELO TEACHER
 def build_teacher_model(window_size, num_features):
     inputs = layers.Input(shape=(window_size, num_features))
 
@@ -67,7 +62,7 @@ def build_teacher_model(window_size, num_features):
 
     # Bloque 2: BiGRU con Atención
     r = layers.Bidirectional(layers.GRU(64, return_sequences=True))(c)
-    a = SimpleAttention(128)(r) # La salida ya es plana (batch_size, features)
+    a = SimpleAttention(128)(r) 
     
     # Bloque 3: Refinamiento Residual
     dense_base = layers.Dense(128, activation='relu')(a)
@@ -88,7 +83,7 @@ def build_teacher_model(window_size, num_features):
 teacher = build_teacher_model(WINDOW_SIZE, NUM_FEATURES)
 teacher.summary()
 
-# --- 5. ENTRENAMIENTO ---
+# ENTRENAMIENTO
 callbacks = [
     EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True),
     ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-6, verbose=1),
@@ -106,6 +101,6 @@ history = teacher.fit(
     verbose=1
 )
 
-# --- 6. EXPORTACIÓN ---
+# EXPORTACIÓN
 teacher.save('teacher_soa_resnet.keras')
-print("\n¡Entrenamiento del teacher completado y guardado!")
+print("\nEntrenamiento del teacher completado")

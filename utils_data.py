@@ -35,7 +35,7 @@ def calculate_global_scalers(file_list, chunksize=1000000, save_path='scalers.js
     with open(save_path, 'w') as f:
         json.dump(scalers, f, indent=4)
         
-    print(f"¡Scalers calculados globalmente y guardados en {save_path}!")
+    print(f"Scalers calculados globalmente y guardados en {save_path}!")
     return scalers
 
 class SOADataLoader:
